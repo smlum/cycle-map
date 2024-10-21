@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Bike Lane Map - Montreal</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: "Open Sans", Helvetica, Arial, sans-serif;
+            font-size: 16px;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        /* Legend styles */
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            left: 15px;
+            background: white;
+            padding: 15px;
+            font-size: 14px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .legend h4 {
+            margin: 0 0 5px;
+            font-weight: bold;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+        }
+    </style>
+    <!-- Load Open Sans font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,700&display=swap">
+    <!-- Include MapLibre GL JS and deck.gl CSS/JS -->
+    <link href="https://unpkg.com/maplibre-gl@^3.0.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@^3.0.0/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/deck.gl@^9.0.0-beta.5/dist.min.js"></script>
+</head>
+
+<body>
+    <div id="map"></div>
+    <!-- Legend container -->
+    <div class="legend" id="legend">
+        <h4>Bike Lane Types</h4>
+    </div>
+</body>
+<script type="text/javascript">
+    const {
+        MapboxOverlay,
+        GeoJsonLayer
+    } = deck;
+
+    // Define the color mapping
+    const colorMap = {
+        'Bike Path': [3, 93, 41], // Green
+        'Cycle Track': [52, 199, 89], // Light Green
+        'Local Street Bikeway': [41, 199, 221], // Blue
+        'Multi-Use Path': [255, 149, 0], // Orange
+        'Painted Bike Lane': [255, 59, 48], // Red
+        'Non-Conforming Trail': [162, 132, 94], // Brown
+        'Non-Conforming Other': [142, 142, 147], // Grey
+        'Non-Conforming Major Road': [72, 72, 74], // Dark Grey
+    };
+
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://tiles.openfreemap.org/styles/positron', // Tile server
+        center: [-73.5673, 45.5017], // Montreal coordinates
+        zoom: 11,
+        pitch: 0,
+        antialias: true
+    });
+
+    map.on('style.load', () => {
+        const firstLabelLayerId = map.getStyle().layers.find(layer => layer.type === 'symbol').id;
+
+        const deckOverlay = new MapboxOverlay({
+            interleaved: true,
+            layers: [
+                new GeoJsonLayer({
+                    id: 'bike-lanes',
+                    data: 'montreal_canbics.geojson', // Your GeoJSON file
+                    getLineColor: feature => {
+                        const category = feature.properties.CBICS_infr;
+                        return colorMap[category] || [200, 200, 200];
+                    },
+                    getLineWidth: 2,
+                    lineWidthUnits: 'pixels',
+                    pickable: true,
+                    autoHighlight: true,
+                    beforeId: firstLabelLayerId
+                })
+            ]
+        });
+
+        map.addControl(deckOverlay);
+
+        // Add the legend entries
+        const legend = document.getElementById('legend');
+
+        for (const [category, color] of Object.entries(colorMap)) {
+            const legendItem = document.createElement('div');
+            legendItem.className = 'legend-item';
+
+            const colorBox = document.createElement('span');
+            colorBox.className = 'legend-color';
+            colorBox.style.backgroundColor = `rgb(${color.join(',')})`;
+
+            const label = document.createElement('span');
+            label.textContent = category;
+
+            legendItem.appendChild(colorBox);
+            legendItem.appendChild(label);
+
+            legend.appendChild(legendItem);
+        }
+    });
+</script>
+
+</html>
